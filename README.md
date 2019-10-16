@@ -1,0 +1,2 @@
+# What is this?
+Some toy programs for TLA+. I'm implementing several simple things so I can get a feel of the langauge and how to use TLC. I also have some personal notes under "notes.md". That file is mostly just a list of the various mistakes I've made and how they were fixed / possible things that could be going wrong.
