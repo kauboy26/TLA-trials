@@ -1,4 +1,4 @@
----- MODULE trial ----
+---- MODULE misscan ----
 
 \* Just trying my own version of Missionaries - Cannibals.
 
@@ -45,7 +45,7 @@ Move(group) ==
     IN
         /\ boat' = newboat
         /\ bank' = [i \in {"l", "r"} |->
-                        IF i = boat THEN (bank[boat] \ group) ELSE (bank[OtherSide(boat)] \cup group)]
+                        IF i = boat THEN (bank[boat] \ group) ELSE (bank[newboat] \cup group)]
                         \* See Note 2
 
 
