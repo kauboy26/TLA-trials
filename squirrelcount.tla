@@ -7,7 +7,8 @@ EXTENDS Naturals, FiniteSets
 \* Each counter performs a READ of a global count variable,
 \* performs a local addition, and then WRITES the updated value
 \* to the global count variable. As this is non-atomic, the
-\* operation breaks.
+\* operation breaks when two counters perform a READ concurrently
+\* and then later write. This results in a lost update.
 
 CONSTANT num
 
