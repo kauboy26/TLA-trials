@@ -13,11 +13,8 @@ CONSTANTS miss, cans
 
 VARIABLES bank, boat
 
-\*TypeOK == /\ bank_of_boat \in {"E","W"}
-\*          /\ who_is_on_bank \in 
-\*                [{"E","W"} -> SUBSET (Cannibals \cup Missionaries)]
 
-
+\* See Note 1
 TypeInfo == /\ bank \in [{"l", "r"} -> SUBSET (miss \cup cans)]
             /\ boat \in {"l", "r"}
 
@@ -49,6 +46,7 @@ Move(group) ==
         /\ boat' = newboat
         /\ bank' = [i \in {"l", "r"} |->
                         IF i = boat THEN (bank[boat] \ group) ELSE (bank[OtherSide(boat)] \cup group)]
+                        \* See Note 2
 
 
 Next == \E group \in SUBSET (miss \cup cans) :
