@@ -31,3 +31,6 @@ Keep track of the total number of units of work that the CPUs have performed. Ke
 
 It may also be possible set a periodicity in UoW per process. That way, premption happens exactly then, otherwise, we can specify a timer that preempts periodically. We preempt whichever comes faster
 
+
+## Time Taken:
+Start measuring (IMMEDIATELY - measure the current, rough model too) the time taken for TLC to run as a function of the total number of process / total number of CPUs, maybe other params you can find.

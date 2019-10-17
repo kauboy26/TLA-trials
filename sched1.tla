@@ -31,6 +31,15 @@ Init ==
     /\ cpus = [c \in (1 .. numCPUS) |-> c]
     
 
+\* The right way to update the rrHead: pick the next inactive process.
+nextHead(currHead) ==
+            (((CHOOSE p \in ((currHead + 1) .. (numProcs + currHead - 1)) :
+                /\ procTable[((p - 1) % numProcs) + 1][1] = 0
+                /\ (\A i \in ((currHead + 1) .. (numProcs + currHead - 1)) :
+                    \/ procTable[((i - 1) % numProcs) + 1][1] = 1
+                    \/ p <= i)) - 1) % numProcs) + 1
+
+
 \* Simply move from one active process to another in RR fashion.
 \* Note that we update the process table and increment all in one step.
 \* Due to the atomicity of this procedure, even with multiple processors
@@ -42,13 +51,14 @@ Next ==
                             IF p = proc THEN <<0, 0>>
                             ELSE IF p = rrHead THEN <<1, procTable[proc][2]>>
                             ELSE procTable[p]]
-        /\ rrHead' = (rrHead % numProcs) + 1
+        /\ rrHead' = nextHead(rrHead)
         /\ cpus' = [c \in (1 .. numCPUS) |->
                         IF c = procTable[proc][2] THEN rrHead
                         ELSE cpus[c]]
-        /\ Print(JavaTime, TRUE)
-        /\ Print(rrHead, TRUE)
-        /\ Print(procTable, TRUE)
+\*        /\ Print(JavaTime, TRUE)
+\*        /\ Print(rrHead, TRUE)
+\*        /\ Print(nextHead(rrHead), TRUE)
+\*        /\ Print(procTable, TRUE)
     
 \* There should always be an active process.
 ActiveExists ==
