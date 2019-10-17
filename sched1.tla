@@ -64,7 +64,15 @@ Next ==
 ActiveExists ==
     /\ \E p \in (1 .. numProcs) :
         /\ procTable[p][1] = 1
-        
+
+
+\* When there are more processes than there are CPUs, at least one
+\* process must be inactive.
+FreeExists ==
+    \/ numProcs <= numCPUS
+    \/ \E p \in (1 .. numProcs) : procTable[p][1] = 0
+
+
 \* True if there are two CPUs in the table that map to the same process.
 SameProc ==
     /\ \E i \in (1 .. numCPUS) : (\E j \in (1 .. numCPUS) : i # j /\ cpus[i] = cpus[j])
