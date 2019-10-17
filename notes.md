@@ -34,3 +34,6 @@ It may also be possible set a periodicity in UoW per process. That way, premptio
 
 ## Time Taken:
 Start measuring (IMMEDIATELY - measure the current, rough model too) the time taken for TLC to run as a function of the total number of process / total number of CPUs, maybe other params you can find.
+
+### Number of States
+Keep track of this guy as well. Perhaps if you can visualize the number via a graph it'll be nice.
