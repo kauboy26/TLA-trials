@@ -1,7 +1,15 @@
 ---- MODULE sched1 ----
 
-\* Demonstrates what happens if you run the scheduler without
-\* a process table lock.
+\* A simple scheduler where the process of pre-emption
+\* and scheduling is atomic. The model is constrained as follows:
+\* 1) There are numProcs processes that are all runnable.
+\* 2) There are numCPUS CPUs that can pick these processes up. The
+\* constraint numProcs > numCPUS is enforced, meaning there should
+\* always be a process that isn't being run, that can be scheduled.
+\* 3) Each CPU is running a process, and randomly, a process is
+\* preempted. The CPU running the process then chooses another
+\* process to run from the table of processes (procTable), and begins
+\* to run it.
 EXTENDS Naturals, TLC
 
 CONSTANTS numProcs, numCPUS
