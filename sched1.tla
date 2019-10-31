@@ -32,6 +32,10 @@ Init ==
     
 
 \* The right way to update the rrHead: pick the next inactive process.
+\* BUG: This should actually include the PID that was just freed. Consider
+\* the situation with four CPUs and five processes: The current rrHead points
+\* to the free PID (which is the only free PID). Below, we are trying to choose
+\* the next rrHead that excludes the current rrHead.
 nextHead(currHead) ==
             (((CHOOSE p \in ((currHead + 1) .. (numProcs + currHead - 1)) :
                 /\ procTable[((p - 1) % numProcs) + 1][1] = 0
