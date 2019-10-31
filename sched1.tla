@@ -10,6 +10,12 @@
 \* preempted. The CPU running the process then chooses another
 \* process to run from the table of processes (procTable), and begins
 \* to run it.
+
+\* The following invariants are ensured:
+\* 1) There is always a free process (a process not being run that can
+\* be run). This is modeled in "FreeExists".
+\* 2) There is always a process being run (active process). Modeled in "ActiveExists".
+\* 3) No two CPUs are running the same process. Modeled in "NotSameProc".
 EXTENDS Naturals, TLC
 
 CONSTANTS numProcs, numCPUS
@@ -93,8 +99,4 @@ SameProc ==
 \* No two CPUs should be running the same process
 NotSameProc ==
     /\ ~ SameProc
-
-
-        
-
 ========
