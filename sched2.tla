@@ -55,7 +55,8 @@
 \* that points at the next process to run. Instead, whenever the scheduler is run after the death / falling asleep
 \* / pre-emption of a process, the search is performed starting at the process immediately after the unlucky process.
 \* When there are no processes to run, the scheduler relinquishes the ptable lock briefly, before trying to starting to
-\* search again. This allows another process to call the scheduler and do whatever crap. -- TODO: explain this properly.
+\* search again. This lets other processes acquire the ptable lock if they need to, for example, when they want to go to
+\* sleep.
 
 EXTENDS Naturals, TLC
 
@@ -81,11 +82,11 @@ VARIABLES procTable, cpus, pTableLock, tlb, scheduling, head
 \* The classes to which each variable belongs.
 TypeInfo ==
     /\ procTable \in [(1 .. numProcs) -> {RUNNABLE, NOTRUNNABLE, RUNNING} \X (0 .. numCPUs)]
-    /\ cpus \in [(1 .. numCPUs) -> (1 .. numProcs)]
+    /\ cpus \in [(1 .. numCPUs) -> (0 .. numProcs)]
     /\ numProcs > numCPUs
     /\ pTableLock \in {0, 1}
     /\ tlb \in [(1 .. numCPUs) -> (0 .. numProcs)]
-    /\ scheduling \in {0, 1}
+    /\ scheduling \in (0 .. numCPUs)
     /\ head \in (1 .. numProcs)
 
 
@@ -109,11 +110,14 @@ Init ==
 \* IMPORTANT: This operator is valid ONLY when there exists a RUNNABLE process.
 \* TODO : for now, just choose the first free process on the ptable.
 ChooseProc(p) ==
-    CHOOSE i \in (1 .. numProcs) :
-        /\ procTable[i][1] = RUNNABLE
-        /\ \A x \in (1 .. numProcs):
-            \/ procTable[x][1] # RUNNABLE
-            \/ i <= x
+    LET mod1(i) == ((i - 1) % numProcs) + 1 IN
+    mod1(
+        CHOOSE i \in ((p + 1) .. (p + numProcs)):
+            /\ procTable[mod1(i)][1] = RUNNABLE
+            /\ \A x \in ((p + 1) .. (p + numProcs)):
+                \/ procTable[mod1(x)][1] # RUNNABLE
+                \/ i <= x
+    )
 
 
 
