@@ -110,6 +110,7 @@ Init ==
 \* TODO : for now, just choose the first free process on the ptable.
 ChooseProc(p) ==
     CHOOSE i \in (1 .. numProcs) :
+        /\ procTable[i][1] = RUNNABLE
         /\ \A x \in (1 .. numProcs):
             \/ procTable[x][1] # RUNNABLE
             \/ i <= x
@@ -198,15 +199,13 @@ MagicSchedule ==
     /\ pTableLock = 0
     /\ \E c \in (1 .. numCPUs):
         /\ cpus[c] = 0
-        /\ \A x \in (1 .. numCPUs):
-            \/ c <= x
-            \/ cpus[c] # 0
+        /\ \A x \in (1 .. numCPUs): (c <= x \/ cpus[x] # 0)
         /\ head' = numProcs
         /\ scheduling' = c
-        /\ pTableLock' = 1
-        /\ UNCHANGED cpus
-        /\ UNCHANGED tlb
-        /\ UNCHANGED procTable
+    /\ pTableLock' = 1
+    /\ UNCHANGED cpus
+    /\ UNCHANGED tlb
+    /\ UNCHANGED procTable
 
 
 
@@ -237,7 +236,7 @@ SchedulerHasLock ==
 
 \* True if there are two CPUs that map to the same process.
 SameProc ==
-    /\ \E i \in (1 .. numCPUs) : (\E j \in (1 .. numCPUs) : i # j /\ cpus[i] = cpus[j])
+    /\ \E i \in (1 .. numCPUs) : cpus[i] # 0 /\ (\E j \in (1 .. numCPUs) : i # j /\ cpus[i] = cpus[j])
 
 
 \* No two CPUs should be running the same process
