@@ -83,7 +83,6 @@ VARIABLES procTable, cpus, pTableLock, tlb, scheduling, head
 TypeInfo ==
     /\ procTable \in [(1 .. numProcs) -> {RUNNABLE, NOTRUNNABLE, RUNNING} \X (0 .. numCPUs)]
     /\ cpus \in [(1 .. numCPUs) -> (0 .. numProcs)]
-    /\ numProcs > numCPUs
     /\ pTableLock \in {0, 1}
     /\ tlb \in [(1 .. numCPUs) -> (0 .. numProcs)]
     /\ scheduling \in (0 .. numCPUs)
