@@ -86,6 +86,7 @@ TypeInfo ==
     /\ pTableLock \in {0, 1}
     /\ tlb \in [(1 .. numCPUs) -> (0 .. numProcs)]
     /\ scheduling \in {0, 1}
+    /\ head \in (1 .. numProcs)
 
 
 
@@ -101,6 +102,7 @@ Init ==
     /\ pTableLock = 0
     /\ tlb = [c \in (1 .. numCPUs) |-> IF c = 1 THEN 1 ELSE 0]
     /\ scheduling = 0
+    /\ head = 1
     
 
 \* The next process to be run.
@@ -134,6 +136,7 @@ Preemption ==
 \* within the scheduler, we don't perform an actual check on the pTableLock.   
 Schedule ==
     /\ scheduling # 0
+    /\
         \/
             /\ \E p \in (1 .. numProcs) : procTable[p][1] = RUNNABLE
             /\ LET newProc == ChooseProc(head) IN
@@ -198,13 +201,34 @@ MagicSchedule ==
         /\ \A x \in (1 .. numCPUs):
             \/ c <= x
             \/ cpus[c] # 0
-        /\ head' = 1
+        /\ head' = numProcs
         /\ scheduling' = c
         /\ pTableLock' = 1
         /\ UNCHANGED cpus
         /\ UNCHANGED tlb
         /\ UNCHANGED procTable
 
+
+
+\* One of the following actions can happen. The actions lead to processes coming alive,
+\* dying, being scheduled, being preempted, etc.
+Next ==
+    \/ Preemption
+    \/ Sleep
+    \/ Schedule
+    \/ MagicRunnable
+    \/ MagicSchedule
+
+
+\* Every RUNNING process is using the right TLB.
+TLBValid ==
+    /\ TRUE \* TODO
+
+
+\* The CPU running the scheduler must not have a process associated with it
+SchedCPUIsFree ==
+    \/ scheduling = 0
+    \/ cpus[scheduling] = 0
 
 \* If the scheduler is active, the pTableLock must be held.
 \* scheduler active implies pTableLock is held.
