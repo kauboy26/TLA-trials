@@ -225,7 +225,9 @@ Next ==
 
 \* Every RUNNING process is using the right TLB.
 TLBValid ==
-    /\ TRUE \* TODO
+    /\ \A c \in (1 .. numCPUs):
+        \/ cpus[c] = 0 /\ tlb[c] = 0
+        \/ cpus[c] # 0 /\ cpus[c] = tlb[c] /\ procTable[cpus[c]][1] = RUNNING
 
 
 \* The CPU running the scheduler must not have a process associated with it
