@@ -70,9 +70,11 @@ CONSTANTS RUNNABLE, NOTRUNNABLE, RUNNING
 \* procTable: a mapping from process number to process state and the CPU RUNNING it.
 \* cpus: a mapping from CPU number to the process it is RUNNING.
 \* pTableLock: a lock on the process table. When not held, 0.
-               TODO: Make this lock reflect who's holding it?
+\*                TODO: Make this lock reflect who's holding it?
 \* tlb: a mapping from CPU to the page table the CPU is using. Kernel's (0) or a process's (PID).
-VARIABLES procTable, cpus, pTableLock, tlb
+\* scheduling: denotes when the scheduler is active, 0 when inactive. Otherwise contains CPU ID.
+\* head: where the RR search starts from.
+VARIABLES procTable, cpus, pTableLock, tlb, scheduling, head
 
 
 
@@ -83,74 +85,139 @@ TypeInfo ==
     /\ numProcs > numCPUs
     /\ pTableLock \in {0, 1}
     /\ tlb \in [(1 .. numCPUs) -> (0 .. numProcs)]
+    /\ scheduling \in {0, 1}
 
 
 
 \* Initially, only one process, the very first in the table, is active. All the other processes
-\* don't exist. New processes will be magically spawned later.
+\* don't exist. New processes will be magically spawned later. cpus is initialized so that only
+\* the first CPU is running something: the first process. The tlb is initialized to reflect that,
+\* and the ptable lock is not held.
 Init ==
     /\ procTable = [p \in (1 .. numProcs) |->
                             IF p = 1 THEN <<RUNNING, p>> ELSE <<NOTRUNNABLE, 0>>]
-    /\ cpus = [c \in (1 .. numCPUS) |->
+    /\ cpus = [c \in (1 .. numCPUs) |->
                     IF c = 1 THEN 1 ELSE 0]
+    /\ pTableLock = 0
+    /\ tlb = [c \in (1 .. numCPUs) |-> IF c = 1 THEN 1 ELSE 0]
+    /\ scheduling = 0
     
 
-\* The right way to update the rrHead: pick the next inactive process.
-\* BUG: This should actually include the PID that was just freed. Consider
-\* the situation with four CPUs and five processes: The current rrHead points
-\* to the free PID (which is the only free PID). Below, we are trying to choose
-\* the next rrHead that excludes the current rrHead.
-nextHead(currHead) ==
-            (((CHOOSE p \in ((currHead + 1) .. (numProcs + currHead - 1)) :
-                /\ procTable[((p - 1) % numProcs) + 1][1] = 0
-                /\ (\A i \in ((currHead + 1) .. (numProcs + currHead - 1)) :
-                    \/ procTable[((i - 1) % numProcs) + 1][1] = 1
-                    \/ p <= i)) - 1) % numProcs) + 1
+\* The next process to be run.
+\* IMPORTANT: This operator is valid ONLY when there exists a RUNNABLE process.
+\* TODO : for now, just choose the first free process on the ptable.
+ChooseProc(p) ==
+    CHOOSE i \in (1 .. numProcs) :
+        /\ \A x \in (1 .. numProcs):
+            \/ procTable[x][1] # RUNNABLE
+            \/ i <= x
 
 
-\* Simply move from one active process to another in RR fashion.
-\* Note that we update the process table and increment all in one step.
-\* Due to the atomicity of this procedure, even with multiple processors
-\* There shouldn't be a bug.
-Next ==
-    \E proc \in (1 .. numProcs) :
-        /\ procTable[proc][1] = 1 \* The proc is active.
-        /\ procTable' = [p \in (1 .. numProcs) |->
-                            IF p = proc THEN <<0, 0>>
-                            ELSE IF p = rrHead THEN <<1, procTable[proc][2]>>
-                            ELSE procTable[p]]
-        /\ rrHead' = nextHead(rrHead)
-        /\ cpus' = [c \in (1 .. numCPUS) |->
-                        IF c = procTable[proc][2] THEN rrHead
-                        ELSE cpus[c]]
-\*        /\ Print(JavaTime, TRUE)
-\*        /\ Print(rrHead, TRUE)
-\*        /\ Print(nextHead(rrHead), TRUE)
-\*        /\ Print(procTable, TRUE)
+
+\* The transition from RUNNING to RUNNABLE. The scheduler can now be invoked.
+Preemption ==
+    /\ \E c \in (1 .. numCPUs):
+        /\ cpus[c] # 0
+        /\ pTableLock = 0
+        /\ pTableLock' = 1
+        /\ scheduling' = c
+        /\ procTable' = [i \in (1 .. numProcs) |->
+                            IF i = cpus[c] THEN <<RUNNABLE, 0>> ELSE procTable[i]]
+        /\ cpus' = [i \in (1 .. numCPUs) |->
+                        IF i = c THEN 0 ELSE cpus[i]]
+        /\ tlb' = [i \in (1 .. numCPUs) |->
+                        IF i = c THEN 0 ELSE tlb[i]]
+        /\ head' = cpus[c]
     
-\* There should always be an active process.
-ActiveExists ==
+
+\* The pTableLock should be held, but we will check only for the "scheduling" condition, as
+\* within the scheduler, we don't perform an actual check on the pTableLock.   
+Schedule ==
+    /\ scheduling # 0
+        \/
+            /\ \E p \in (1 .. numProcs) : procTable[p][1] = RUNNABLE
+            /\ LET newProc == ChooseProc(head) IN
+                /\ procTable' = [i \in (1 .. numProcs) |->
+                                    IF i = newProc THEN <<RUNNING, scheduling>> ELSE procTable[i]]
+                /\ tlb' = [i \in (1 .. numCPUs) |->
+                            IF i = scheduling THEN newProc ELSE tlb[i]]
+                /\ cpus' = [i \in (1 .. numCPUs) |->
+                            IF i = scheduling THEN newProc ELSE cpus[i]]
+            
+        \/
+            /\ \A p \in (1 .. numProcs) : procTable[p][1] # RUNNABLE
+            /\ UNCHANGED tlb
+            /\ UNCHANGED cpus
+            /\ UNCHANGED procTable
+    /\ scheduling' = 0
+    /\ pTableLock' = 0
+    /\ UNCHANGED head
+
+
+            
+\* The transition from RUNNING to NOTRUNNABLE. This is very similar to Preemption above,
+\* except for the small change that RUNNING goes to NOTRUNNABLE instead of RUNNABLE.
+\* The scheduler is invoked, and it will deal with whether there is a running process.
+Sleep == 
+    /\ \E c \in (1 .. numCPUs):
+        /\ cpus[c] # 0
+        /\ pTableLock = 0
+        /\ pTableLock' = 1
+        /\ scheduling' = c
+        /\ procTable' = [i \in (1 .. numProcs) |->
+                            IF i = cpus[c] THEN <<NOTRUNNABLE, 0>> ELSE procTable[i]]
+        /\ cpus' = [i \in (1 .. numCPUs) |->
+                        IF i = c THEN 0 ELSE cpus[i]]
+        /\ tlb' = [i \in (1 .. numCPUs) |->
+                        IF i = c THEN 0 ELSE tlb[i]]
+        /\ head' = cpus[c]
+
+    
+\* The magic transition from NOTRUNNABLE to RUNNABLE. Choose the first available procTable entry.
+MagicRunnable ==
+    /\ pTableLock = 0
     /\ \E p \in (1 .. numProcs) :
-        /\ procTable[p][1] = 1
+        /\ procTable[p][1] = NOTRUNNABLE
+        /\ \A x \in (1 .. numProcs):
+            \/ p <= x
+            \/ procTable[x][1] # NOTRUNNABLE
+        /\ procTable' = [i \in (1 .. numProcs) |->
+                            IF i = p THEN <<RUNNABLE, 0>> ELSE procTable[i]]
+    /\ UNCHANGED cpus
+    /\ UNCHANGED tlb
+    /\ UNCHANGED pTableLock
+    /\ UNCHANGED scheduling
+    /\ UNCHANGED head
+                        
+
+\* The scheduler can come alive magically, from the first idle CPU.
+MagicSchedule ==
+    /\ pTableLock = 0
+    /\ \E c \in (1 .. numCPUs):
+        /\ cpus[c] = 0
+        /\ \A x \in (1 .. numCPUs):
+            \/ c <= x
+            \/ cpus[c] # 0
+        /\ head' = 1
+        /\ scheduling' = c
+        /\ pTableLock' = 1
+        /\ UNCHANGED cpus
+        /\ UNCHANGED tlb
+        /\ UNCHANGED procTable
 
 
-\* When there are more processes than there are CPUs, at least one
-\* process must be inactive.
-FreeExists ==
-    \/ numProcs <= numCPUS
-    \/ \E p \in (1 .. numProcs) : procTable[p][1] = 0
+\* If the scheduler is active, the pTableLock must be held.
+\* scheduler active implies pTableLock is held.
+SchedulerHasLock ==
+    /\ (scheduling # 0) => (pTableLock = 1)
 
-
-\* True if there are two CPUs in the table that map to the same process.
+\* True if there are two CPUs that map to the same process.
 SameProc ==
-    /\ \E i \in (1 .. numCPUS) : (\E j \in (1 .. numCPUS) : i # j /\ cpus[i] = cpus[j])
+    /\ \E i \in (1 .. numCPUs) : (\E j \in (1 .. numCPUs) : i # j /\ cpus[i] = cpus[j])
 
 
-\* No two CPUs should be RUNNING the same process
+\* No two CPUs should be running the same process
 NotSameProc ==
     /\ ~ SameProc
-
-
-        
 
 ========
