@@ -71,7 +71,6 @@ CONSTANTS RUNNABLE, NOTRUNNABLE, RUNNING
 \* procTable: a mapping from process number to process state and the CPU RUNNING it.
 \* cpus: a mapping from CPU number to the process it is RUNNING.
 \* pTableLock: a lock on the process table. When not held, 0.
-\*                TODO: Make this lock reflect who's holding it?
 \* tlb: a mapping from CPU to the page table the CPU is using. Kernel's (0) or a process's (PID).
 \* scheduling: denotes when the scheduler is active, 0 when inactive. Otherwise contains CPU ID.
 \* head: where the RR search starts from.
@@ -107,7 +106,6 @@ Init ==
 
 \* The next process to be run.
 \* IMPORTANT: This operator is valid ONLY when there exists a RUNNABLE process.
-\* TODO : for now, just choose the first free process on the ptable.
 ChooseProc(p) ==
     LET mod1(i) == ((i - 1) % numProcs) + 1 IN
     mod1(
