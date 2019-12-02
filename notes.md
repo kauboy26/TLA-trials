@@ -2,7 +2,7 @@
 This document will break down each line of mathematics in sched2.tla (the TLA+ spec of the Xv6 scheduler), and how it models or approximately models the behavior of the actual scheduler. Each line of math will be explained and the original Xv6 code will be shown where necessary.
 
 ## Initialization and Type Information
-`TypeInfo` below speficies the structure of each variable (`procTable`, `cpus`, `pTableLock`, etc.). For exapmle, `procTable` is essentially a function that maps a process number to the corresponding process's current state and CPU it is being run on. `Init` initializes the system to have the very first process in the process table set to `RUNNING`, and has all the other processes `NONRUNNABLE`. The corresponding CPUs are set. The scheduler isn't running, and nobody is holding on to the `pTableLock`. The `tlb` is a function mapping a CPU number to an address space. The `head` is the last process to have been run (the first process, in our case).  
+`TypeInfo` below speficies the structure of each variable ( `procTable`, `cpus`, `pTableLock`, etc.). For example, `procTable` is essentially a function that maps a process number to the corresponding process's current state and CPU it is being run on. `Init` initializes the system to have the very first process in the process table set to `RUNNING`, and has all the other processes `NONRUNNABLE`. The corresponding CPUs are set. The scheduler isn't running, and nobody is holding on to the `pTableLock`. The `tlb` is a function mapping a CPU number to an address space. The `head` is the last process to have been run (the first process, in our case).  
 
 NOTE: indexing is done from `1` in TLA+, just as it is in MATLAB. Thus the first entry in the `procTable` would be `procTable[1]`.
 
